@@ -317,6 +317,10 @@ UpdateOverlay(store, config, data, tracker.LiveMatch, tracker.IsLive);
 // content.json is read from GitHub at each start, then every 2 hours (a few kilobytes): new weeks, prize ids, Treasure
 // Hours and notices (a known problem...) without a new version of the tool, even for a counter left open all day.
 // Always, like the pictures: it is only data.
+// Versión del escuadrón: manda cada partida al servidor si existe escuadron.json (si no, no hace nada).
+EscuadronSync.Start(store.Folder, () => Volatile.Read(ref quit));
+EscuadronSync.Queue(data.Matches);
+
 var imagesAdded = false;
 _ = Task.Run(async () =>
 {
@@ -436,6 +440,7 @@ while (!quit)
         try
         {
             tracker.Scan();
+            EscuadronSync.Queue(data.Matches);
             if (ReportWriter.Progress != null)
             {
                 // The replays left at startup are read (a batch clears it itself, a single replay does not).

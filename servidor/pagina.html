@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cofres Escuadrón</title>
+<style>
+  :root{--bg:#0d1220;--card:#161d30;--line:#26304a;--tx:#e8ecf4;--mut:#8c97b2;--gold:#f5c542;--blue:#4aa3ff;--green:#3ddc97;--pink:#ff6b9a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:18px 16px 8px;max-width:1000px;margin:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;flex-wrap:wrap}
+  h1{margin:0;font-size:22px}
+  h1 span{color:var(--gold)}
+  .mut{color:var(--mut);font-size:13px}
+  main{max-width:1000px;margin:auto;padding:8px 12px 40px;display:grid;gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .card h2{margin:0 0 10px;font-size:15px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .stat{background:#0f1628;border:1px solid var(--line);border-radius:10px;padding:10px}
+  .stat b{display:block;font-size:24px}
+  .stat small{color:var(--mut)}
+  .gold{color:var(--gold)} .green{color:var(--green)} .blue{color:var(--blue)}
+  .players{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--mut);font-weight:600}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);color:var(--mut);margin-left:4px}
+  .tag.hora{color:var(--gold);border-color:var(--gold)}
+  .bars{display:flex;align-items:flex-end;gap:4px;height:130px;margin-top:6px}
+  .bar{flex:1;background:var(--blue);border-radius:4px 4px 0 0;min-height:2px;position:relative}
+  .bar.hoy{background:var(--gold)}
+  .lbls{display:flex;gap:4px;font-size:10px;color:var(--mut)}
+  .lbls span{flex:1;text-align:center}
+  .scroll{overflow-x:auto}
+  .err{color:var(--pink)}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Cofres <span>Escuadrón</span></h1><div class="mut" id="sub">Cargando…</div></div>
+  <div class="mut" id="odds"></div>
+</header>
+<main>
+  <section class="card">
+    <h2>Probabilidad del token (escuadrón)</h2>
+    <div class="grid" id="squad"></div>
+    <p class="mut" style="margin:10px 0 0">El token se comparte con todo el escuadrón, así que aquí cuentan los cofres de todos en cada partida. Cada cofre tiene 1 en <span id="onein"></span> (más en Horas del Tesoro).</p>
+  </section>
+
+  <section class="card">
+    <h2>Si siguen jugando igual</h2>
+    <div class="grid" id="proj"></div>
+  </section>
+
+  <section class="players" id="players"></section>
+
+  <section class="card">
+    <h2>Cofres del escuadrón por día</h2>
+    <div class="bars" id="bars"></div>
+    <div class="lbls" id="lbls"></div>
+  </section>
+
+  <section class="card scroll">
+    <h2>Últimas partidas</h2>
+    <table><thead><tr><th>Cuándo</th><th>Escuadrón</th><th class="n">Cofres</th><th class="n">Prob.</th></tr></thead>
+    <tbody id="last"></tbody></table>
+    <p class="mut" style="margin:8px 0 0">≈ = número aproximado (visto en la repetición de otro, solo a ~150 m). Sin ≈ = exacto, de su propia repetición.</p>
+  </section>
+</main>
+<script>
+const k = new URLSearchParams(location.search).get('k') || '';
+const fmt = n => (n ?? 0).toLocaleString('es-MX');
+const pct = p => p >= 1 ? p.toFixed(1)+'%' : p >= 0.01 ? p.toFixed(3)+'%' : p.toFixed(4)+'%';
+const stat = (val, label, cls='') => `<div class="stat"><b class="${cls}">${val}</b><small>${label}</small></div>`;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function load(){
+  try{
+    const r = await fetch('/api/resumen?k='+encodeURIComponent(k), {cache:'no-store'});
+    if(!r.ok) throw new Error('Clave inválida o servidor sin respuesta');
+    render(await r.json());
+  }catch(e){ document.getElementById('sub').innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+}
+
+function render(d){
+  const t = new Date(d.actualizado);
+  document.getElementById('sub').textContent = 'Actualizado ' + t.toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'}) + ' · se refresca solo';
+  document.getElementById('onein').textContent = fmt(d.odds.uno_en);
+  document.getElementById('odds').innerHTML = d.odds.hora_tesoro_ahora > 1
+    ? `<span class="gold">¡Hora del Tesoro ahora! ×${d.odds.hora_tesoro_ahora}</span>` : '';
+
+  const s = d.escuadron;
+  document.getElementById('squad').innerHTML =
+    stat(pct(s.hoy.prob), `hoy · ${fmt(s.hoy.cofres)} cofres en ${s.hoy.partidas} partidas`, 'gold') +
+    stat(pct(s.semana.prob), `esta semana · ${fmt(s.semana.cofres)} cofres`, 'gold') +
+    stat(pct(s.total.prob), `en total · ${fmt(s.total.cofres)} cofres en ${s.total.partidas} partidas`, 'gold');
+
+  const p = d.proyeccion;
+  const oneIn = n => n ? `1 en ${fmt(n)}` : '—';
+  document.getElementById('proj').innerHTML =
+    stat(pct(p.por_partida), `por partida (${oneIn(p.por_partida_1_en)}) · ~${p.cofres_por_partida} cofres`, 'blue') +
+    stat(pct(p.por_dia), `por día (${oneIn(p.por_dia_1_en)}) · ~${p.partidas_por_dia} partidas`, 'blue') +
+    stat(pct(p.por_semana), `por semana (${oneIn(p.por_semana_1_en)}) · ~${p.partidas_por_semana} partidas`, 'blue') +
+    stat(p.partidas_para_50 ? fmt(p.partidas_para_50) : '—', `partidas para llegar a 50% (${fmt(p.cofres_para_50)} cofres)`);
+
+  document.getElementById('players').innerHTML = d.jugadores.map(j => `
+    <div class="card">
+      <h2>${esc(j.nombre)}</h2>
+      <div class="grid">
+        ${stat(fmt(j.total.cofres), `cofres en ${j.total.partidas} partidas`, 'green')}
+        ${stat(j.total.promedio, 'promedio por partida')}
+      </div>
+      <table style="margin-top:10px">
+        <tr><th></th><th class="n">Partidas</th><th class="n">Cofres</th><th class="n">Prom.</th></tr>
+        <tr><td>Con su amigo</td><td class="n">${j.con_amigo.partidas}</td><td class="n">${fmt(j.con_amigo.cofres)}</td><td class="n">${j.con_amigo.promedio}</td></tr>
+        <tr><td>Sin su amigo</td><td class="n">${j.sin_amigo.partidas}</td><td class="n">${fmt(j.sin_amigo.cofres)}</td><td class="n">${j.sin_amigo.promedio}</td></tr>
+      </table>
+      <p class="mut" style="margin:8px 0 0">Probabilidad con solo sus cofres: ${pct(j.prob_propia)}${j.total.aprox ? ` · ${j.total.aprox} partidas con número aproximado` : ''}</p>
+    </div>`).join('');
+
+  const max = Math.max(1, ...d.dias.map(x => x.cofres));
+  document.getElementById('bars').innerHTML = d.dias.map((x,i) =>
+    `<div class="bar ${i===d.dias.length-1?'hoy':''}" style="height:${(x.cofres/max*100).toFixed(1)}%" title="${x.fecha}: ${x.cofres} cofres, ${x.partidas} partidas, ${pct(x.prob)}"></div>`).join('');
+  document.getElementById('lbls').innerHTML = d.dias.map(x => `<span>${x.fecha.slice(8)}</span>`).join('');
+
+  document.getElementById('last').innerHTML = d.ultimas.map(m => {
+    const when = m.inicio ? new Date(m.inicio).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    const who = m.miembros.filter(x => !x.bot || x.cofres).map(x =>
+      `${x.registrado?'<b>':''}${esc(x.nombre)}${x.registrado?'</b>':''} ${x.exacto?'':'≈'}${x.cofres}`).join(' · ');
+    return `<tr><td>${when}${m.boost>1?`<span class="tag hora">×${m.boost}</span>`:''}</td><td>${who}</td><td class="n">${m.cofres_escuadron}</td><td class="n">${pct(m.prob)}</td></tr>`;
+  }).join('') || '<tr><td colspan=4 class="mut">Todavía no hay partidas. Juega una con el programa abierto.</td></tr>';
+}
+
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>

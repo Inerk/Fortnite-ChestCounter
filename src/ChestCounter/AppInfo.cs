@@ -7,7 +7,11 @@ public static class AppInfo
 
     public static string VersionText => $"{Version.Major}.{Version.Minor}.{Math.Max(0, Version.Build)}";
 
-    public const string Repo = "LED-N/Fortnite-ChestCounter";
+    /// <summary>Versión del escuadrón: las actualizaciones del programa vienen del fork de Tony.</summary>
+    public const string Repo = "Inerk/Fortnite-ChestCounter";
+
+    /// <summary>Datos de la búsqueda del tesoro (semanas, probabilidades, imágenes): del proyecto original, que los mantiene al día.</summary>
+    public const string ContentRepo = "LED-N/Fortnite-ChestCounter";
     public static string RepoUrl => "https://github.com/" + Repo;
     public static string IssuesUrl => RepoUrl + "/issues";
 
