@@ -1,6 +1,8 @@
-**Versión Escuadrón** (basada en Chest Counter 1.5.1 de LED-N)
+**Versión Escuadrón 1.5.101** (basada en Chest Counter 1.5.1 de LED-N)
 
 Descarga **`ChestCounter.exe`** abajo y ábrelo. No se instala.
+
+Novedades de 1.5.101: `escuadron.json` se encuentra junto al programa aunque Windows lo haya renombrado al bajarlo ("ChestCounter (1).exe").
 
 Lo nuevo respecto al original:
 - Si junto al `.exe` (o en `%APPDATA%\ChestCounter`) está el archivo **`escuadron.json`**, cada partida contada se manda al servidor del escuadrón: id de la partida, tu cuenta, tus cofres, los de tus compañeros y los tesoros. Nada más (ni repeticiones ni archivos).

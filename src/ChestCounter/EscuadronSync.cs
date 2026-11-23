@@ -58,7 +58,8 @@ public static class EscuadronSync
             return;
         }
         var candidates = new List<string>();
-        if (AppInfo.ExePath is { } exe && Path.GetDirectoryName(exe) is { } exeDir)
+        // Junto al .exe aunque Windows lo haya renombrado al bajarlo ("ChestCounter (1).exe").
+        if (Environment.ProcessPath is { } exe && Path.GetDirectoryName(exe) is { } exeDir)
         {
             candidates.Add(Path.Combine(exeDir, ConfigFile));
         }
